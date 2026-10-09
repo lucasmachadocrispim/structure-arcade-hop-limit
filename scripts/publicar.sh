@@ -32,6 +32,20 @@ git fetch origin "$BRANCH" --quiet
 git worktree add "$WORKTREE" "origin/$BRANCH" --detach >/dev/null
 cd "$WORKTREE"
 
+# Sempre garante o carregador e o rollout.json na raiz
+if [ -f "$REPO_DIR/pages/index.html" ]; then
+  cp "$REPO_DIR/pages/index.html" ./index.html
+fi
+if [ ! -f rollout.json ] && [ -f "$REPO_DIR/pages/rollout.json" ]; then
+  cp "$REPO_DIR/pages/rollout.json" ./rollout.json
+fi
+# Estrutura de pastas
+mkdir -p releases hml status
+# Painel de status
+if [ -f "$REPO_DIR/pages/status/index.html" ]; then
+  cp "$REPO_DIR/pages/status/index.html" status/index.html
+fi
+
 case "$MODO" in
   hml)
     rm -rf hml && mkdir -p hml

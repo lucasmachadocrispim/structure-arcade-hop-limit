@@ -159,6 +159,21 @@ jobs:
       - name: Abrir canário (10%)
         run: bash scripts/rollout.sh canario "${GITHUB_SHA::7}" 10
 
+      - name: Aguardar release propagar no Pages (até 3 min)
+        run: |
+          URL="${{ vars.SITE_URL }}/releases/${GITHUB_SHA::7}/"
+          for i in $(seq 1 18); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L "$URL")
+            echo "tentativa $i — releases/${GITHUB_SHA::7}/: $code"
+            if [ "$code" = "200" ]; then
+              echo "✓ release no ar após $((i*10))s"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "⚠ release não publicou em 3 min — seguindo mesmo assim"
+          exit 0
+
       - name: Instalar Playwright
         run: |
           npm ci
@@ -175,6 +190,7 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         run: |
           bash scripts/rollout.sh rollback
+          echo "::error title=Rollback executado::Smoke falhou em produção — rollback automático feito."
           exit 1
 
       - name: Promover canário a 100%
