@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
-# Manipula o rollout.json no branch gh-pages.
-#
-# Uso:
-#   rollout.sh canario <sha> <percentual>   abre canário
-#   rollout.sh promover                     canário -> estável (100%)
-#   rollout.sh rollback                     estável <- anterior (se existir), canário zerado
-#
+# Manipula o rollout.json no branch gh-pages. Nunca falha por arquivo vazio.
 set -euo pipefail
 
-ACAO="${1:?ação obrigatória: canario|promover|rollback}"
+ACAO="${1:?ação: canario|promover|rollback}"
 SHA="${2:-}"
 PCT="${3:-10}"
 
@@ -16,52 +10,59 @@ BRANCH="gh-pages"
 REPO_DIR="${PWD}"
 WORKTREE="$(mktemp -d)"
 
+if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+  echo "✗ branch $BRANCH não existe"; exit 1
+fi
+
 git fetch origin "$BRANCH" --quiet
 git worktree add "$WORKTREE" "origin/$BRANCH" --detach >/dev/null
 cd "$WORKTREE"
 
-[ -f rollout.json ] || echo '{"estavel":null,"anterior":null,"canario":null,"percentual":0}' > rollout.json
+# Lê estado atual (defaults se arquivo estiver vazio ou inválido)
+ESTAVEL="null"; ANTERIOR="null"; CANARIO="null"; PERCENTUAL="0"
+if [ -s rollout.json ]; then
+  ESTAVEL=$(jq -r '.estavel // "null"' rollout.json 2>/dev/null || echo "null")
+  ANTERIOR=$(jq -r '.anterior // "null"' rollout.json 2>/dev/null || echo "null")
+  CANARIO=$(jq -r '.canario // "null"' rollout.json 2>/dev/null || echo "null")
+  PERCENTUAL=$(jq -r '.percentual // 0' rollout.json 2>/dev/null || echo "0")
+fi
 
 case "$ACAO" in
   canario)
-    anterior=$(jq -r '.estavel' rollout.json)
-    jq --arg sha "$SHA" --arg ant "$anterior" --argjson pct "$PCT" \
-       '.anterior = $ant | .canario = $sha | .percentual = $pct' \
-       rollout.json > tmp.json && mv tmp.json rollout.json
+    if [ "$ESTAVEL" != "null" ] && [ -n "$ESTAVEL" ]; then ANTERIOR="$ESTAVEL"; fi
+    CANARIO="$SHA"; PERCENTUAL="$PCT"
     ;;
   promover)
-    sha=$(jq -r '.canario' rollout.json)
-    # se não havia canário, mantém o estável atual (evita null)
-    if [ -z "$sha" ] || [ "$sha" = "null" ]; then
-      echo "⚠ sem canário aberto — nada a promover"
+    if [ "$CANARIO" = "null" ] || [ -z "$CANARIO" ]; then
+      echo "⚠ sem canário — nada a promover"
       cd "$REPO_DIR" && git worktree remove "$WORKTREE" --force && exit 0
     fi
-    jq --arg sha "$sha" '.estavel = $sha | .canario = null | .percentual = 0' \
-       rollout.json > tmp.json && mv tmp.json rollout.json
+    ANTERIOR="$ESTAVEL"; ESTAVEL="$CANARIO"; CANARIO="null"; PERCENTUAL="0"
     ;;
   rollback)
-    atual=$(jq -r '.estavel' rollout.json)
-    anterior=$(jq -r '.anterior' rollout.json)
-    # se anterior for null/vazio e estavel também, não faz nada (primeiro deploy)
-    if [ -z "$anterior" ] || [ "$anterior" = "null" ]; then
-      if [ -z "$atual" ] || [ "$atual" = "null" ]; then
-        echo "⚠ primeiro deploy — sem versão anterior para rollback; mantendo"
-        cd "$REPO_DIR" && git worktree remove "$WORKTREE" --force && exit 0
-      fi
-      echo "⚠ sem versão anterior — mantendo estável atual ($atual)"
+    if [ "$ANTERIOR" = "null" ] || [ -z "$ANTERIOR" ]; then
+      echo "⚠ sem versão anterior — nada a fazer"
       cd "$REPO_DIR" && git worktree remove "$WORKTREE" --force && exit 0
     fi
-    jq '.estavel = .anterior | .canario = null | .percentual = 0' \
-       rollout.json > tmp.json && mv tmp.json rollout.json
+    ESTAVEL="$ANTERIOR"; CANARIO="null"; PERCENTUAL="0"
     ;;
   *) echo "✗ ação desconhecida: $ACAO"; exit 1;;
 esac
 
-MSG="rollout: $ACAO ${SHA:-(auto)} por ${GITHUB_ACTOR:-local} em $(date -u +%FT%TZ)"
+# Escreve JSON SEMPRE válido
+printf '{\n  "estavel": %s,\n  "anterior": %s,\n  "canario": %s,\n  "percentual": %s\n}\n' \
+  "$([ "$ESTAVEL" = "null" ] && echo null || echo "\"$ESTAVEL\"")" \
+  "$([ "$ANTERIOR" = "null" ] && echo null || echo "\"$ANTERIOR\"")" \
+  "$([ "$CANARIO" = "null" ] && echo null || echo "\"$CANARIO\"")" \
+  "$PERCENTUAL" > rollout.json
+
+echo "→ rollout.json:"; cat rollout.json
+
 git add rollout.json
-git -c user.name="rollout-bot" -c user.email="rollout@users.noreply.github.com" commit -qm "$MSG"
+git -c user.name="rollout-bot" -c user.email="rollout@users.noreply.github.com" \
+    commit -qm "rollout: $ACAO ${SHA:-auto} por ${GITHUB_ACTOR:-local}" || echo "→ sem mudanças a commitar"
 git push origin HEAD:"$BRANCH" --quiet
 
 cd "$REPO_DIR"
 git worktree remove "$WORKTREE" --force
-echo "✓ rollout: $MSG"
+echo "✓ rollout: $ACAO"
