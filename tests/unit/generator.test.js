@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { gen, Kfor, Kinf } from '../../src/core/generator.js';
 import { ZK } from '../../src/core/constants.js';
 
@@ -49,9 +49,29 @@ describe('generator · gen', () => {
     expect(r.lines[0]).toBe('A 203.0.113.7');
   });
 
-  it('vlan access sempre inclui switchport access vlan', () => {
+  it('vlan gera config access quando o sorteio cai em access', () => {
+    // Math.random >= 0.5 força o ramo "access"
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.9);
     const r = gen('vlan', pacoteBase(), false);
+    spy.mockRestore();
     expect(r.lines.some(l => l.startsWith('switchport access vlan'))).toBe(true);
+    expect(r.bad).toBe(-1);
+  });
+
+  it('vlan gera config trunk quando o sorteio cai em trunk', () => {
+    // Math.random < 0.5 força o ramo "trunk"
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const r = gen('vlan', pacoteBase(), false);
+    spy.mockRestore();
+    expect(r.lines.some(l => l.startsWith('switchport trunk allowed vlan'))).toBe(true);
+    expect(r.bad).toBe(-1);
+  });
+
+  it('vlan sempre devolve 3 linhas (access ou trunk)', () => {
+    for (let i = 0; i < 30; i++) {
+      const r = gen('vlan', pacoteBase(), false);
+      expect(r.lines).toHaveLength(3);
+    }
   });
 
   it('nat com falha marca bad=1', () => {
