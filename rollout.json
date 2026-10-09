@@ -1,6 +1,6 @@
 {
-  "estavel": null,
+  "estavel": "null",
   "anterior": "null",
-  "canario": "18071cd",
-  "percentual": 10
+  "canario": null,
+  "percentual": 0
 }
