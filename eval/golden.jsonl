@@ -1,0 +1,5 @@
+{"id":"q001","pergunta":"Qual é o endereço IP privado?","alternativas":["10.0.0.5","8.8.8.8","1.1.1.1","200.1.1.1"],"correta":0,"topico":"ip"}
+{"id":"q002","pergunta":"Qual porta o protocolo HTTPS usa por padrão?","alternativas":["80","443","22","53"],"correta":1,"topico":"porta"}
+{"id":"q003","pergunta":"Qual é a máscara de sub-rede para 24 bits de rede?","alternativas":["255.255.255.0","255.255.0.0","255.0.0.0","255.255.255.128"],"correta":0,"topico":"mask"}
+{"id":"q004","pergunta":"O que significa VLAN?","alternativas":["Virtual LAN","Very Long Area Network","Variable LAN","Verified Local Access Node"],"correta":0,"topico":"vlan"}
+{"id":"q005","pergunta":"Qual protocolo resolve nomes em endereços IP?","alternativas":["DHCP","DNS","FTP","SMTP"],"correta":1,"topico":"dns"}

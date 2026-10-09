@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOP LIMIT · Status</title>
+<style>
+  :root{--ink:#F2E8D5;--am:#E8B44B;--ok:#6BBF59;--er:#D64545;--bg:#12121A;--card:#1E1E2A;--ln:#2E2E3E}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:2em 1.2em 4em}
+  h1{color:var(--am);margin:0 0 .1em;letter-spacing:.04em}
+  h2{color:var(--am);font-size:1em;letter-spacing:.06em;text-transform:uppercase;margin:2em 0 .6em}
+  .sub{color:#9a9aa6;font-size:.9em;margin:0 0 2em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:14px}
+  .card b{display:block;font-size:1.8em;color:var(--am);line-height:1.1}
+  .card span{font-size:.8em;color:#9a9aa6;text-transform:uppercase;letter-spacing:.05em}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--ln);border-radius:10px;overflow:hidden;font-size:.88em}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--ln)}
+  th{background:#22232c;color:var(--am);font-weight:600;font-size:.8em;letter-spacing:.04em;text-transform:uppercase}
+  tr:last-child td{border-bottom:0}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78em;font-weight:600}
+  .pill.ok{background:rgba(107,191,89,.18);color:var(--ok)}
+  .pill.er{background:rgba(214,69,69,.18);color:var(--er)}
+  code{font-family:"Courier New",monospace;color:#5FB8C8}
+  .rodape{margin-top:3em;color:#6b6b76;font-size:.8em;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>HOP LIMIT · Status</h1>
+  <p class="sub">Painel de disponibilidade, versão em produção e métricas DORA. Atualizado a cada 15 min pelo workflow <code>monitor.yml</code>.</p>
+
+  <h2>Resumo</h2>
+  <div class="grid" id="resumo">
+    <div class="card"><b>—</b><span>Produção</span></div>
+    <div class="card"><b>—</b><span>Homologação</span></div>
+    <div class="card"><b>—</b><span>Versão estável</span></div>
+    <div class="card"><b>—</b><span>Canário</span></div>
+  </div>
+
+  <h2>Métricas DORA (últimos 30 dias)</h2>
+  <div class="grid" id="dora">
+    <div class="card"><b>—</b><span>Frequência de deploy (/sem)</span></div>
+    <div class="card"><b>—</b><span>Lead time (dias)</span></div>
+    <div class="card"><b>—</b><span>Taxa de falha</span></div>
+    <div class="card"><b>—</b><span>MTTR (horas)</span></div>
+  </div>
+
+  <h2>Últimas sondas</h2>
+  <table id="sondas">
+    <thead><tr><th>Data (UTC)</th><th>Alvo</th><th>Código</th><th>Tempo (s)</th></tr></thead>
+    <tbody><tr><td colspan="4">Carregando…</td></tr></tbody>
+  </table>
+
+  <p class="rodape">Squad Structure · Faculdade SENAI · 2026</p>
+</main>
+
+<script>
+const fmt = (n, d = 2) => (typeof n === 'number' ? n.toFixed(d) : '—');
+const setCard = (i, val) => {
+  const el = document.querySelectorAll('#resumo .card b')[i];
+  if (el) el.textContent = val;
+};
+const setDora = (i, val) => {
+  const el = document.querySelectorAll('#dora .card b')[i];
+  if (el) el.textContent = val;
+};
+
+async function carregar() {
+  try {
+    const r = await fetch('../rollout.json', { cache: 'no-store' });
+    const cfg = await r.json();
+    setCard(2, cfg.estavel || '—');
+    setCard(3, cfg.canario ? cfg.canario + ' (' + cfg.percentual + '%)' : '—');
+  } catch (e) { /* rollout ainda não publicado */ }
+
+  try {
+    const r = await fetch('../observabilidade/status/sondas.csv', { cache: 'no-store' });
+    if (!r.ok) throw new Error('sem CSV');
+    const linhas = (await r.text()).trim().split('\n').slice(1);
+    const tbody = document.querySelector('#sondas tbody');
+    const ult = linhas.slice(-12).reverse();
+    tbody.innerHTML = ult.map(function (l) {
+      const partes = l.split(',');
+      const data = partes[0], alvo = partes[1], code = partes[2], tempo = partes[3];
+      const cls = code === '200' ? 'ok' : 'er';
+      return '<tr><td>' + data + '</td><td><code>' + alvo + '</code></td>' +
+        '<td><span class="pill ' + cls + '">' + code + '</span></td><td>' + tempo + '</td></tr>';
+    }).join('') || '<tr><td colspan="4">Sem dados ainda.</td></tr>';
+
+    const invertido = linhas.slice().reverse();
+    const prodUlt = invertido.find(l => l.indexOf('/structure-arcade-hop-limit/,') > -1);
+    const hmlUlt = invertido.find(l => l.indexOf('/hml/') > -1);
+    setCard(0, prodUlt && prodUlt.split(',')[2] === '200' ? 'OK' : 'FALHA');
+    setCard(1, hmlUlt && hmlUlt.split(',')[2] === '200' ? 'OK' : 'FALHA');
+  } catch (e) {
+    document.querySelector('#sondas tbody').innerHTML =
+      '<tr><td colspan="4">Aguardando primeira sonda.</td></tr>';
+  }
+
+  try {
+    const r = await fetch('../reports/dora.json', { cache: 'no-store' });
+    const d = await r.json();
+    setDora(0, fmt(d.frequenciaDeployPorSemana));
+    setDora(1, fmt(d.leadTimeDias));
+    setDora(2, fmt(d.taxaFalha, 1) + '%');
+    setDora(3, fmt(d.mttrHoras));
+  } catch (e) { /* dora.json ainda não publicado */ }
+}
+carregar();
+setInterval(carregar, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+name: esteira-jogo
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: esteira-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: ci · lint · testes · segurança · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint (checagem de sintaxe)
+        run: npm run lint
+
+      - name: Testes de unidade e integração + cobertura
+        run: |
+          mkdir -p reports
+          npm run test:ci
+
+      - name: Varredura de segredos (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auditoria de dependências de produção
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: SBOM (CycloneDX)
+        run: |
+          mkdir -p reports
+          npm sbom --sbom-format cyclonedx > reports/sbom.json
+
+      - name: Build do jogo + GDD.pdf
+        run: |
+          npm run build
+          npm run gdd:pdf
+
+      - name: Empacotar build.zip + checksum
+        run: |
+          cd dist && zip -qr ../build.zip . && cd ..
+          sha256sum build.zip > build.zip.sha256
+
+      - name: Publicar artefatos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-${{ github.sha }}
+          path: |
+            build.zip
+            build.zip.sha256
+            docs/GDD.pdf
+            reports/
+          retention-days: 30
+
+  deploy-hml:
+    name: deploy · homologação
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: homologacao
+      url: ${{ vars.SITE_URL }}/hml/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+
+      - name: Publicar em gh-pages/hml/
+        run: bash scripts/publicar.sh hml build.zip
+
+      - name: Instalar Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Regressão E2E em homologação
+        env:
+          BASE_URL: ${{ vars.SITE_URL }}/hml/
+        run: npx playwright test tests/e2e/regressao.spec.ts
+
+  deploy-prd:
+    name: deploy · produção (canário)
+    needs: deploy-hml
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: producao
+      url: ${{ vars.SITE_URL }}/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+
+      - name: Publicar release em gh-pages/releases/<sha>/
+        run: bash scripts/publicar.sh release build.zip "${GITHUB_SHA::7}"
+
+      - name: Abrir canário (10%)
+        run: bash scripts/rollout.sh canario "${GITHUB_SHA::7}" 10
+
+      - name: Instalar Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Smoke em produção (com rollback automático)
+        id: smoke
+        continue-on-error: true
+        env:
+          BASE_URL: ${{ vars.SITE_URL }}/releases/${{ github.sha }}/
+        run: npx playwright test tests/e2e/smoke.spec.ts
+
+      - name: Rollback automático se o smoke falhar
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          bash scripts/rollout.sh rollback
+          exit 1
+
+      - name: Promover canário a 100%
+        if: steps.smoke.outcome == 'success'
+        run: bash scripts/rollout.sh promover
+
+  release:
+    name: release · GitHub Release
+    needs: deploy-prd
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+      - name: Criar release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build.zip
+            build.zip.sha256
+            docs/GDD.pdf
+            reports/sbom.json
+          generate_release_notes: true

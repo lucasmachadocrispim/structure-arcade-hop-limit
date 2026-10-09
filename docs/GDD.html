@@ -1,0 +1,210 @@
+<!doctype html><meta charset="utf-8"><title>GDD · HOP LIMIT</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:800px;margin:3em auto;padding:0 1em;color:#16161a}h1{font-size:2em}h2{margin-top:1.6em;border-bottom:2px solid #e3142f;padding-bottom:.3em}</style>
+<article><p><h1>HOP LIMIT · Game Design Document</h1>
+
+<strong>Squad:</strong> Structure
+<strong>Integrantes:</strong> Ana Lívia dos Santos Lopes (26180945) · Jacquys Barbosa da Silva (26179857) · Lucas Machado Crispim (26179871) · Luis Gustavo Cesar Consoli de Almeida (26180137)
+<strong>Versão:</strong> 1.0.0 · <strong>Data:</strong> 07/10/2026
+<strong>Repositório:</strong> https://github.com/lucasmachadocrispim/structure-arcade-hop-limit
+
+---
+
+<h2>1. Premissa e problema endereçado</h2>
+
+O ensino de redes de computadores é, com frequência, abstrato: o estudante decora listas de regras de ACL, máscaras de sub-rede e nomes de protocolos sem entender <strong>por que</strong> um pacote é aceito ou bloqueado em uma configuração real.
+
+<strong>HOP LIMIT</strong> transforma essa abstração em uma decisão visual e concreta. O jogador encarna um pacote de dados e precisa escolher, em cada bifurcação de uma rede, qual dispositivo permite a passagem — lendo a configuração de cada um (ACL, NAT, VLAN, tabela de rotas, política de TLS…). Cada acerto avança o pacote; cada erro custa uma vida e mostra, em vermelho, exatamente qual regra bloqueou.
+
+<strong>Público-alvo:</strong> estudantes iniciantes de redes, cursos técnicos e de graduação em TI, e autodidatas que estão estudando para certificações introdutórias (CCNA, CompTIA Network+).
+
+<strong>Por que gamificação?</strong> Errar em um simulador real é caro e confuso; errar em um jogo é seguro, imediato e feedback-driven. A mecânica de "leia a config, decida, veja o motivo do bloqueio" treina exatamente a habilidade avaliada em provas e no trabalho: <strong>interpretar regras de rede</strong>.
+
+---
+
+<h2>2. High Concept</h2>
+
+<strong>HOP LIMIT</strong> é um jogo 2D de raciocínio rápido em que você controla um pacote de dados atravessando dispositivos de rede. Em cada ramificação, dois ou mais dispositivos mostram sua configuração real (ACL, rota, VLAN, NAT, política de TLS, DSCP…) e você precisa decidir por qual passar. A etiqueta do pacote (IP de origem, MAC, porta, TTL, VLAN) fica visível o tempo todo; o dispositivo cuja configuração <strong>permite</strong> esse pacote específico é o caminho certo. Cada zona do jogo introduz de 4 a 9 conceitos novos, misturando combinados nas fases finais. A dificuldade vem da leitura atenta, não da destreza manual: é um jogo que ensina redes ensinando a <strong>ler redes</strong>.
+
+---
+
+<h2>3. Gênero e plataforma</h2>
+
+- <strong>Gênero:</strong> puzzle / educacional, com elementos de raciocínio em tempo limitado.
+- <strong>Plataforma:</strong> web (desktop e mobile), navegável pelo navegador sem instalação.
+- <strong>Stack:</strong> HTML5 + JavaScript (ES Modules) + Phaser 3.80 (via CDN).
+- <strong>Testes:</strong> Vitest (unidade, integração) + Playwright (E2E).
+- <strong>Build:</strong> estático, publicado em GitHub Pages.
+
+---
+
+<h2>4. Mecânicas-core</h2>
+
+<h3>Loop principal</h3>
+
+1. O jogo sorteia um pacote com atributos (IP, MAC, porta, VLAN, TTL, etc.).
+2. A ramificação apresenta <strong>2 a 7 dispositivos</strong>, cada um com uma configuração de rede.
+3. <strong>Exatamente um</strong> dispositivo aceita esse pacote específico.
+4. O jogador lê a config e escolhe o caminho.
+5. Acerto → o pacote atravessa e avança. Erro → o jogo mostra, em vermelho, a linha que bloqueia; o jogador perde uma vida.
+6. A cada 5 ramificações (uma "zona"), novos conceitos são introduzidos.
+
+<h3>Progressão</h3>
+
+- <strong>5 zonas</strong>, cada uma com 5 ramificações.
+- Zona 1: IP, porta, TCP, UDP.
+- Zona 2: máscara, CIDR, gateway, broadcast.
+- Zona 3: ACL, NAT, PAT, DNS.
+- Zona 4: MAC, VLAN, trunk, DHCP.
+- Zona 5: OSPF, rotas, BGP, AS, VPN, TLS, QoS, TTL, ICMP.
+
+A partir da zona 3, dois ou mais conceitos podem ser cobrados no mesmo dispositivo.
+
+<h3>Vitória e derrota</h3>
+
+- <strong>Vitória:</strong> chegar ao destino final após atravessar as 5 zonas.
+- <strong>Derrota:</strong> perder todas as 5 vidas. O pacote explode e a partida termina.
+
+<h3>Modo Infinito</h3>
+
+Liberado após a primeira vitória. O jogo segue indefinidamente, aumentando o número de dispositivos por ramificação e reduzindo o tempo. Guarda o recorde de distância.
+
+<h3>Recompensas</h3>
+
+- <strong>Byto-Coins:</strong> moeda ganha a cada acerto (bônus por combo, por tempo curto, por zona perfeita).
+- <strong>Relíquias:</strong> itens compráveis entre zonas que alteram a partida (vida extra, tempo maior, desconto na loja, etc.).
+- <strong>Codex:</strong> enciclopédia de 25 conceitos que se desbloqueia conforme aparecem no jogo.
+
+<h3>Sistema de pontuação</h3>
+
+- Cada acerto = 1 a 2 moedas (dependendo do tempo e da sequência).
+- Sequências de 3+ acertos = bônus.
+- Zona completa sem perder vida = +1 vida ou bônus em moedas.
+
+---
+
+<h2>5. Enredo e personagens</h2>
+
+<h3>Contexto</h3>
+
+Você é um pacote de dados em trânsito. Precisa sair da máquina de origem e chegar a um servidor na internet, atravessando uma rede corporativa e depois a internet pública. No caminho, cada dispositivo é um porteiro com uma lista de regras.
+
+<h3>Personagens</h3>
+
+- <strong>O Pacote (jogador):</strong> caixa de papelão com fita adesiva e etiqueta. A cor pode ser escolhida. Sofre rachaduras conforme perde vidas.
+- <strong>Byto:</strong> mascote-guia, um pequeno robô feito de código binário. Aparece no tutorial, nas lojas entre zonas e ao final, dando dicas e reagindo ao desempenho do jogador.
+- <strong>Os Dispositivos:</strong> firewalls, roteadores, switches, servidores DNS, NATs e gateways. Não falam — mostram sua configuração.
+
+<h3>Cenário</h3>
+
+Parallax em camadas com silhuetas de racks, torres de servidor, cabos e antenas, mudando de paleta a cada zona.
+
+---
+
+<h2>6. Fluxo do jogo</h2>
+
+```
+Menu principal
+  ├── Iniciar → Tutorial (Byto) → Modo Tempo? → Guia de cores?
+  │                                          ↓
+  │                                     Zona 1 (5 ramos)
+  │                                          ↓
+  │                                     Loja entre zonas
+  │                                          ↓
+  │                                     Zona 2 … Zona 5
+  │                                          ↓
+  │                                     Chegada ao destino → Vitória
+  │                                          ↓
+  │                                     Menu final (Modo Infinito / Reiniciar / Menu)
+  ├── Codex (25 conceitos, abas laterais, desbloqueio progressivo)
+  ├── Configurações (som, música, modo tempo, tutorial, guia de cores, debug, apagar progresso)
+  └── Cor do pacote (10 opções)
+```
+
+Estados adicionais durante a partida: pausa pelo Codex, "toque para pular" em animações, pop-up de relíquia ao comprar na loja.
+
+---
+
+<h2>7. Level design</h2>
+
+O jogo não tem mapa fixo: cada ramificação é <strong>gerada proceduralmente</strong> a partir de um pacote aleatório e de um conjunto de conceitos da zona atual.
+
+- <strong>Número de dispositivos por ramificação:</strong> `[3, 3, 4, 4, 5]` para as zonas 1–5, com até +1 aleatório.
+- <strong>Tipos de dispositivo:</strong> `acl`, `rota`, `vlan`, `dns`, `nat`, `srv`, `gw`, sorteados.
+- <strong>Config por dispositivo:</strong> uma ou mais linhas, geradas com <strong>uma linha deliberadamente bloqueante</strong> (falha) ou <strong>sem bloqueio</strong> (o caminho certo).
+- <strong>Dificuldade crescente:</strong>
+  - Zona 1: 1 conceito por dispositivo.
+  - Zonas 2–4: até 2 conceitos por dispositivo.
+  - Zona 5: até 3 conceitos por dispositivo.
+- <strong>Modo Infinito:</strong> até 7 dispositivos por ramificação, conceitos sorteados de todas as zonas.
+
+---
+
+<h2>8. Interface (UI/UX)</h2>
+
+<h3>Elementos fixos na tela</h3>
+
+- <strong>Topo:</strong> mapa de zonas e número do ramo atual.
+- <strong>Barra de tempo:</strong> abaixo do mapa, quando o modo tempo está ativo.
+- <strong>Rodapé (mobile) / canto (desktop):</strong> corações de vida, contador de moedas, três slots de relíquia.
+- <strong>Etiqueta do pacote:</strong> painel com os atributos do pacote atual (ID, src, dport, tcp/udp, etc.).
+- <strong>Bloco de config:</strong> ao lado do dispositivo sob o cursor, com a configuração formatada e a linha bloqueante em vermelho.
+- <strong>Byto:</strong> mascote com balão de fala, canto inferior.
+
+<h3>Acessibilidade</h3>
+
+- <strong>Guia de cores:</strong> cada conceito tem uma cor própria, e a cor aparece tanto na etiqueta do pacote quanto nas linhas da config que casam com ele (pode ser desligada nas Configurações).
+- <strong>Modo texto primeiro:</strong> toda decisão pode ser tomada lendo, sem depender de reflexo.
+- <strong>Fontes grandes e alto contraste</strong> no HUD.
+- <strong>"Toque para pular"</strong> nas animações de tutorial.
+- <strong>Legendas no vídeo pitch.</strong>
+- <strong>Sem coleta de dados pessoais</strong> — todo progresso é local (`localStorage`).
+
+---
+
+<h2>9. Áudio e música</h2>
+
+Todo o áudio é <strong>sintetizado em tempo real</strong> pela Web Audio API. Nenhum arquivo de áudio é incorporado.
+
+- <strong>Trilha procedural:</strong> tema de 8 notas tocado em 5 variações (menu, calma, tensa, épica, vitória) com andamento, timbre e efeitos diferentes. O andamento acompanha a fase; o "ducking" abaixa a música quando um efeito grande toca.
+- <strong>Efeitos sonoros:</strong> clique, hover, acerto, erro, explosão, fanfarra de vitória, moedas, "whoosh" de movimento.
+- <strong>Ambiente da loja:</strong> reverberação e drones leves para diferenciar a atmosfera.
+
+Ver `THIRD_PARTY.md` para licenças (nenhum ativo de terceiros).
+
+---
+
+<h2>10. Arte e referências visuais</h2>
+
+- <strong>Todo o visual é procedural:</strong> retângulos, triângulos, textos formatados com `Phaser.Graphics` e `Phaser.Text`. Não há sprites externos.
+- <strong>Paleta do pacote:</strong> 10 cores, com sombreamento calculado em runtime.
+- <strong>Cenários:</strong> silhuetas de racks, servidores, torres e cabos, desenhadas por código.
+
+<h3>Referências do protótipo</h3>
+
+- <strong>Mini Metro</strong> (Dinosaur Polo Club) — leitura visual de linhas e decisão rápida.
+- <strong>Human Resource Machine</strong> (Tomorrow Corporation) — quebra-cabeça com linguagem técnica.
+- <strong>Shenzhen I/O</strong> (Zachtronics) — satisfação de interpretar uma configuração técnica.
+- <strong>Networking All-in-One For Dummies</strong> — referência didática de conteúdo.
+- <strong>Cisco Networking Academy</strong> — terminologia de ACL, VLAN e comandos Cisco.
+
+---
+
+<h2>11. Esteira</h2>
+
+```
+commit → PR → CI (lint · testes · segredos · SBOM · build · GDD.pdf)
+       → deploy homologação (Pages /hml/ + E2E)
+       → aprovação manual (environment "producao")
+       → deploy produção canário 10% → smoke → 100%
+       → monitor.yml (agenda 15 min) → alertas como Issues
+```
+
+Rollback: workflow `rollback.yml` acionável ou automático se o smoke falhar.
+
+Ver `docs/relatorio.md` para o relatório técnico completo.
+
+---
+
+<h2>12. Uso de IA e licenças</h2>
+
+Ver `AI-USAGE.md` e `THIRD_PARTY.md`. Todo conteúdo gerado por IA foi revisado por humano. Nenhum ativo de terceiros é usado sem licença compatível.</p></article>

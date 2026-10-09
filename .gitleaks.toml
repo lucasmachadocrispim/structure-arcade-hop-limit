@@ -1,0 +1,19 @@
+title = "HOP LIMIT · regras gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos conhecidos deste repositório"
+paths = [
+  '''package-lock\.json''',
+  '''tests/fixtures/.*''',
+  '''eval/golden\.jsonl''',
+]
+regexes = [
+  '''AA:BB:CC''',
+  '''198\.51\.100\.\d+''',
+  '''203\.0\.113\.\d+''',
+  '''192\.0\.2\.\d+''',
+  '''10\.\d+\.\d+\.\d+''',
+]

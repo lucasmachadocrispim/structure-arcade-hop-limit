@@ -1,0 +1,31 @@
+{
+  "name": "structure-arcade-hop-limit",
+  "version": "1.0.0",
+  "description": "HOP LIMIT — jogo educativo de redes para o Desafio Framework Arcade (Squad Structure)",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "serve . -l 5173",
+    "start": "serve . -l 5173",
+    "lint": "node --check src/main.js && node --check src/core/utils.js && node --check src/core/packet.js && node --check src/core/generator.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=reports/junit.xml",
+    "test:e2e": "playwright test",
+    "build": "node scripts/build.js",
+    "gdd:pdf": "node scripts/gdd-pdf.js",
+    "sbom": "npm sbom --sbom-format cyclonedx",
+    "triagem": "bash scripts/triagem.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "jsdom": "^25.0.0",
+    "serve": "^14.2.0",
+    "vitest": "^2.1.0"
+  }
+}

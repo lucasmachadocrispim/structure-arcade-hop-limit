@@ -1,0 +1,24 @@
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      motivo:
+        description: "Motivo do rollback (vai para o commit)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment:
+      name: producao
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reverter estável para anterior
+        env:
+          MOTIVO: ${{ inputs.motivo }}
+        run: bash scripts/rollout.sh rollback

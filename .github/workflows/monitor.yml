@@ -1,0 +1,78 @@
+name: monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sonda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: observabilidade
+
+      - name: Sondar produção e homologação
+        id: sonda
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          mkdir -p status
+          touch status/sondas.csv
+          [ -s status/sondas.csv ] || echo "data,alvo,codigo,tempo" > status/sondas.csv
+          fora=""
+          lenta=""
+          for alvo in "$SITE_URL/" "$SITE_URL/hml/"; do
+            read -r code tempo < <(curl -s -L -o /dev/null -w '%{http_code} %{time_total}' --max-time 10 "$alvo" || echo "000 0")
+            echo "$(date -u +%FT%TZ),$alvo,$code,$tempo" >> status/sondas.csv
+            [ "$code" = "200" ] || fora="$fora $alvo($code)"
+            awk -v t="$tempo" 'BEGIN{exit !(t>2.0)}' && lenta="$lenta $alvo(${tempo}s)"
+          done
+          echo "fora=$fora" >> "$GITHUB_OUTPUT"
+          echo "lenta=$lenta" >> "$GITHUB_OUTPUT"
+
+      - name: Commitar sondas
+        run: |
+          git config user.name "monitor-bot"
+          git config user.email "monitor@users.noreply.github.com"
+          git add status/sondas.csv
+          git diff --cached --quiet || git commit -qm "monitor: sonda $(date -u +%FT%TZ)"
+          git push
+
+      - name: Alerta JogoForaDoAr
+        if: steps.sonda.outputs.fora != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          aberta=$(gh issue list -R "$GITHUB_REPOSITORY" --label alerta --state open \
+            --search "JogoForaDoAr in:title" --json number -q '.[0].number')
+          [ -n "$aberta" ] || gh issue create -R "$GITHUB_REPOSITORY" \
+            --label alerta --title "JogoForaDoAr${{ steps.sonda.outputs.fora }}" \
+            --body "Sonda sem resposta 200 em $(date -u +%FT%TZ)."
+
+      - name: Alerta LatenciaAlta
+        if: steps.sonda.outputs.lenta != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          aberta=$(gh issue list -R "$GITHUB_REPOSITORY" --label alerta --state open \
+            --search "LatenciaAlta in:title" --json number -q '.[0].number')
+          [ -n "$aberta" ] || gh issue create -R "$GITHUB_REPOSITORY" \
+            --label alerta --title "LatenciaAlta${{ steps.sonda.outputs.lenta }}" \
+            --body "Sonda acima de 2 s em $(date -u +%FT%TZ)."
+
+      - name: Fechar alertas resolvidos
+        if: steps.sonda.outputs.fora == '' && steps.sonda.outputs.lenta == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue list -R "$GITHUB_REPOSITORY" --label alerta --state open \
+            --json number,title -q '.[] | "\(.number) \(.title)"' | \
+          while read -r n t; do
+            gh issue close "$n" -R "$GITHUB_REPOSITORY" -c "Sonda normalizada em $(date -u +%FT%TZ)."
+          done
