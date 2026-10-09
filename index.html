@@ -1,14 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Hop Limit</title>
-<style>html,body{margin:0;height:100%;background:#12121A;overflow:hidden;touch-action:none}#game{width:100%;height:100%}</style>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOP LIMIT</title>
+<style>
+  html,body{margin:0;height:100%;background:#12121A;color:#F2E8D5;
+    font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center}
+  main{text-align:center;max-width:480px;padding:2em}
+  h1{font-size:2.4em;color:#E8B44B;margin:0 0 .2em;letter-spacing:.04em}
+  p{color:#9a9aa6;margin:.4em 0}
+  .msg{min-height:2em;color:#5FB8C8;font-family:"Courier New",monospace;font-size:.9em}
+</style>
 </head>
 <body>
-<div id="game"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
-<script type="module" src="./src/main.js"></script>
+<main>
+  <h1>HOP LIMIT</h1>
+  <p>Preparando a versão certa para você…</p>
+  <div class="msg" id="msg"></div>
+  <noscript>Habilite JavaScript para jogar.</noscript>
+</main>
+<script>
+(async () => {
+  const msg = document.getElementById('msg');
+  try {
+    const r = await fetch('rollout.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('rollout.json → ' + r.status);
+    const cfg = await r.json();
+
+    let v = null;
+    try { v = localStorage.getItem('versao'); } catch (e) {}
+    const validas = [cfg.estavel, cfg.canario].filter(Boolean);
+    if (!validas.includes(v)) {
+      v = (cfg.canario && Math.random() * 100 < (cfg.percentual || 0))
+        ? cfg.canario
+        : cfg.estavel;
+      try { localStorage.setItem('versao', v); } catch (e) {}
+    }
+    if (!v) throw new Error('nenhuma versão publicada');
+    location.replace('releases/' + v + '/');
+  } catch (e) {
+    msg.textContent = 'Jogo indisponível: ' + e.message;
+    msg.style.color = '#D64545';
+  }
+})();
+</script>
 </body>
 </html>
