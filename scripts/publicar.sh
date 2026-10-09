@@ -24,7 +24,7 @@ fi
 if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
   echo "→ criando branch $BRANCH"
   git worktree add -B "$BRANCH" "$WORKTREE" >/dev/null
-  (cd "$WORKTREE" && git commit --allow-empty -qm "ci: inicia $BRANCH" && git push -u origin "$BRANCH")
+  (cd "$WORKTREE" && git -c user.name="esteira-bot" -c user.email="esteira@users.noreply.github.com" commit --allow-empty -qm "ci: inicia $BRANCH" && git push -u origin "$BRANCH")
   git worktree remove "$WORKTREE" --force
 fi
 
