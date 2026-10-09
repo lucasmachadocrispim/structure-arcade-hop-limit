@@ -1,0 +1,31 @@
+{
+  "versao": "1.0.0",
+  "total": 25,
+  "conceitos": [
+    { "id": "ip",    "nome": "Endereço IP",          "zona": 1, "preReqs": [] },
+    { "id": "porta", "nome": "Porta de rede",        "zona": 1, "preReqs": [] },
+    { "id": "tcp",   "nome": "TCP",                  "zona": 1, "preReqs": [] },
+    { "id": "udp",   "nome": "UDP",                  "zona": 1, "preReqs": [] },
+    { "id": "mask",  "nome": "Máscara de sub-rede",  "zona": 2, "preReqs": ["ip"] },
+    { "id": "cidr",  "nome": "Notação CIDR",         "zona": 2, "preReqs": ["ip"] },
+    { "id": "gw",    "nome": "Gateway padrão",       "zona": 2, "preReqs": ["ip"] },
+    { "id": "bcast", "nome": "Broadcast",            "zona": 2, "preReqs": ["ip"] },
+    { "id": "acl",   "nome": "Firewall / ACL",       "zona": 3, "preReqs": ["ip","porta","tcp"] },
+    { "id": "nat",   "nome": "NAT",                  "zona": 3, "preReqs": ["ip"] },
+    { "id": "pat",   "nome": "PAT",                  "zona": 3, "preReqs": ["ip","porta"] },
+    { "id": "dns",   "nome": "DNS",                  "zona": 3, "preReqs": ["ip"] },
+    { "id": "mac",   "nome": "Endereço MAC",         "zona": 4, "preReqs": [] },
+    { "id": "vlan",  "nome": "VLAN",                 "zona": 4, "preReqs": [] },
+    { "id": "trunk", "nome": "Trunk",                "zona": 4, "preReqs": [] },
+    { "id": "dhcp",  "nome": "DHCP",                 "zona": 4, "preReqs": ["ip","mask"] },
+    { "id": "ospf",  "nome": "OSPF",                 "zona": 5, "preReqs": ["ip","cidr"] },
+    { "id": "rota",  "nome": "Tabela de roteamento", "zona": 5, "preReqs": ["ip","cidr"] },
+    { "id": "bgp",   "nome": "BGP",                  "zona": 5, "preReqs": ["ip","cidr"] },
+    { "id": "as",    "nome": "Sistema autônomo",     "zona": 5, "preReqs": [] },
+    { "id": "vpn",   "nome": "VPN",                  "zona": 5, "preReqs": ["ip"] },
+    { "id": "tls",   "nome": "TLS",                  "zona": 5, "preReqs": [] },
+    { "id": "qos",   "nome": "QoS",                  "zona": 5, "preReqs": [] },
+    { "id": "ttl",   "nome": "TTL",                  "zona": 5, "preReqs": ["ip"] },
+    { "id": "icmp",  "nome": "ICMP",                 "zona": 5, "preReqs": ["ip"] }
+  ]
+}
