@@ -22,10 +22,10 @@
     "triagem": "bash scripts/triagem.sh"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0",
-    "@vitest/coverage-v8": "^2.1.0",
-    "jsdom": "^25.0.0",
-    "serve": "^14.2.0",
-    "vitest": "^2.1.0"
+    "@playwright/test": "^1.65.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "jsdom": "^31.0.1",
+    "serve": "^14.2.7",
+    "vitest": "^5.1.0"
   }
 }
